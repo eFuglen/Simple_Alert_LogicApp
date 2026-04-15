@@ -23,6 +23,7 @@ All connection IDs and resource paths are computed at deploy time from the deplo
 infra/
   main.bicep                          Entry point — orchestrates all modules
   modules/
+    apiConnection.bicep               Deploys ARM API connection used by the Logic App
     logicAppConsumption.bicep         Logic App + SystemAssigned MSI + callback URL output
     actionGroup.bicep                 Action Group with Logic App receiver
     metricAlert.bicep                 Optional metric alert rule
@@ -40,7 +41,6 @@ logic-app-config/
 
 - Azure CLI with Bicep: `az bicep install`
 - A resource group to deploy into
-- An existing `arm` API connection resource in the same resource group (used by the Logic App to call Azure Resource Manager)
 - For metric alerts: a target Azure resource to monitor
 
 ## Configure
@@ -51,17 +51,45 @@ Copy and edit the parameter file for your environment:
 cp infra/parameters/main.dev.bicepparam infra/parameters/main.<env>.bicepparam
 ```
 
-Key parameters:
+The **default values** in `main.bicep` apply to all deployments. The **parameter files** (`.bicepparam`) override these defaults for specific environments. For example, `main.dev.bicepparam` sets `namePrefix = 'Dev-'` to prefix all resources with `Dev-`.
+
+### Parameter file example
+
+```bicep
+using '../main.bicep'
+
+param location = 'denmarkeast'
+param namePrefix = 'Dev-'
+param logicAppName = 'Alert_Router'
+param actionGroupName = 'Trigger Alert Router Logic App'
+param actionGroupShortName = 'RouteAlert'
+param actionGroupLogicAppReceiverName = 'Trigger alert router'
+param deployMetricAlert = true
+param metricNamespace = 'Microsoft.Compute/virtualMachines'
+param metricName = 'Percentage CPU'
+```
+
+## Parameters reference
 
 | Parameter | Default | Description |
 |---|---|---|
-| `namePrefix` | `'Dev-'` | Prefix applied to all resource names |
-| `location` | `'denmarkeast'` | Azure region |
-| `logicAppName` | `'Alert_Router'` | Logic App resource name suffix |
-| `armConnectionName` | `'arm'` | Name of the existing ARM API connection resource |
-| `deployMetricAlert` | `false` | Set to `true` to also deploy a metric alert rule |
-| `grantLogicAppSubscriptionReader` | `true` | Grant the Logic App MSI subscription Reader |
-| `subscriptionId` | *(deployment subscription)* | Override only when assigning RBAC to a different subscription |
+| `namePrefix` | `''` | Prefix applied to all resource names |
+| `location` | `resourceGroup().location` | Azure region |
+| `logicAppName` | *(required)* | Logic App resource name |
+| `actionGroupName` | *(required)* | Action Group resource name |
+| `actionGroupShortName` | *(required)* | Action Group short name (max 12 chars) |
+| `actionGroupLogicAppReceiverName` | *(required)* | Display name for Logic App receiver in Action Group |
+| `armConnectionName` | `'arm'` | Name of the ARM API connection resource |
+| `deployMetricAlert` | `true` | Set to `false` to skip metric alert deployment |
+| `metricNamespace` | `''` | Metric namespace (e.g., `Microsoft.Compute/virtualMachines`) |
+| `metricName` | `''` | Metric name (e.g., `Percentage CPU`) |
+| `metricThreshold` | `80` | Threshold value for metric alert |
+| `metricEvaluationFrequency` | `'PT1M'` | How often to evaluate the alert |
+| `metricWindowSize` | `'PT5M'` | Time window for metric aggregation |
+| `grantLogicAppSubscriptionReader` | `true` | Grant Logic App MSI subscription Reader role |
+| `subscriptionId` | `subscription().subscriptionId` | Override only when assigning RBAC to a different subscription |
+
+> **Note:** To deploy a metric alert, set `deployMetricAlert = true` and provide both `metricNamespace` and `metricName` in your parameter file.
 
 ## Validate locally
 
