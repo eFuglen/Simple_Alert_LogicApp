@@ -1,0 +1,218 @@
+{
+  "actions": {
+    "Check_alert_condition": {
+      "actions": {
+        "Read_resource": {
+          "inputs": {
+            "host": {
+              "connection": {
+                "name": "@parameters('$connections')['arm']['connectionId']"
+              }
+            },
+            "method": "get",
+            "path": "/subscriptions/@{encodeURIComponent(variables('AffectedResource')[2])}/resourcegroups/@{encodeURIComponent(variables('AffectedResource')[4])}/providers/@{encodeURIComponent(variables('AffectedResource')[6])}/@{encodeURIComponent(concat(variables('AffectedResource')[7], '/', variables('AffectedResource')[8]))}",
+            "queries": {
+              "x-ms-api-version": "2025-04-01"
+            }
+          },
+          "type": "ApiConnection"
+        }
+      },
+      "else": {
+        "actions": {
+          "Resolved_-_Stop_flow_": {
+            "inputs": {
+              "runStatus": "Cancelled"
+            },
+            "type": "Terminate"
+          }
+        }
+      },
+      "expression": {
+        "and": [
+          {
+            "equals": [
+              "@variables('monitorCondition')",
+              "Fired"
+            ]
+          }
+        ]
+      },
+      "runAfter": {
+        "Get_resource_and_monitor_status": [
+          "Succeeded"
+        ]
+      },
+      "type": "If"
+    },
+    "Check_if_resource_is_monitored": {
+      "actions": {
+        "Resource_is_monitored_send_notification": {
+          "inputs": {
+            "body": {
+              "Body": "<p class=\"editor-paragraph\">Trigger tigger</p>",
+              "Importance": "Normal",
+              "Subject": "The alert was triggered",
+              "To": "eske.fugl@vestereng.net"
+            },
+            "host": {
+              "connection": {
+                "name": "@parameters('$connections')['outlook']['connectionId']"
+              }
+            },
+            "method": "post",
+            "path": "/v2/Mail"
+          },
+          "type": "ApiConnection"
+        }
+      },
+      "else": {
+        "actions": {
+          "Not_monitored": {
+            "inputs": {
+              "runStatus": "Cancelled"
+            },
+            "type": "Terminate"
+          }
+        }
+      },
+      "expression": {
+        "and": [
+          {
+            "contains": [
+              "@variables('tags')",
+              "Monitoring"
+            ]
+          },
+          {
+            "equals": [
+              "@variables('tags')?['Monitoring']",
+              "Silver"
+            ]
+          }
+        ]
+      },
+      "runAfter": {
+        "Tag_values": [
+          "Succeeded"
+        ]
+      },
+      "type": "If"
+    },
+    "Get_resource_and_monitor_status": {
+      "inputs": {
+        "variables": [
+          {
+            "name": "monitorCondition",
+            "type": "string",
+            "value": "@{triggerBody()?['data']?['essentials']?['monitorCondition']}"
+          },
+          {
+            "name": "AffectedResource",
+            "type": "array",
+            "value": "@split(triggerBody()?['data']?['essentials']?['alertTargetIDs'][0],'/')"
+          }
+        ]
+      },
+      "runAfter": {},
+      "type": "InitializeVariable"
+    },
+    "Tag_values": {
+      "inputs": {
+        "variables": [
+          {
+            "name": "tags",
+            "type": "object",
+            "value": "@body('Read_resource')?['tags']"
+          }
+        ]
+      },
+      "runAfter": {
+        "Check_alert_condition": [
+          "Succeeded"
+        ]
+      },
+      "type": "InitializeVariable"
+    }
+  },
+  "contentVersion": "1.0.0.0",
+  "outputs": {},
+  "parameters": {
+    "$connections": {
+      "defaultValue": {},
+      "type": "Object"
+    }
+  },
+  "triggers": {
+    "When_an_HTTP_request_is_received": {
+      "inputs": {
+        "schema": {
+          "properties": {
+            "data": {
+              "properties": {
+                "alertContext": {
+                  "properties": {},
+                  "type": "object"
+                },
+                "essentials": {
+                  "properties": {
+                    "alertContextVersion": {
+                      "type": "string"
+                    },
+                    "alertId": {
+                      "type": "string"
+                    },
+                    "alertRule": {
+                      "type": "string"
+                    },
+                    "alertTargetIDs": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "essentialsVersion": {
+                      "type": "string"
+                    },
+                    "firedDateTime": {
+                      "type": "string"
+                    },
+                    "monitorCondition": {
+                      "type": "string"
+                    },
+                    "monitoringService": {
+                      "type": "string"
+                    },
+                    "originAlertId": {
+                      "type": "string"
+                    },
+                    "resolvedDateTime": {
+                      "type": "string"
+                    },
+                    "severity": {
+                      "type": "string"
+                    },
+                    "signalType": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              },
+              "type": "object"
+            },
+            "schemaId": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "kind": "Http",
+      "type": "Request"
+    }
+  }
+}

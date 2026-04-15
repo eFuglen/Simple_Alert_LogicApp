@@ -1,0 +1,24 @@
+# Bicep build artifacts
+**/*.jsonc
+**/*.bicepbuild.json
+infra/main.json
+
+# Local environment files
+.env
+.env.*
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Terraform (if added later)
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# Azure deployment outputs
+deployment-output*.json
+exported.*.json

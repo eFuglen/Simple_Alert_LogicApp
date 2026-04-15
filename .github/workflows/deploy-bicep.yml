@@ -1,0 +1,52 @@
+name: Deploy Bicep
+
+on:
+  workflow_dispatch:
+    inputs:
+      templateFile:
+        description: Bicep template path
+        required: true
+        default: infra/main.bicep
+      parameterFile:
+        description: Deployment parameter file path
+        required: true
+        default: infra/parameters/main.dev.json
+      deploymentName:
+        description: Deployment name
+        required: true
+        default: simple-alert-logicapp
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  validate-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Validate deployment
+        run: |
+          az deployment group validate \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ github.event.inputs.deploymentName }}-validate" \
+            --template-file "${{ github.event.inputs.templateFile }}" \
+            --parameters "@${{ github.event.inputs.parameterFile }}"
+
+      - name: Deploy
+        run: |
+          az deployment group create \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ github.event.inputs.deploymentName }}" \
+            --template-file "${{ github.event.inputs.templateFile }}" \
+            --parameters "@${{ github.event.inputs.parameterFile }}"

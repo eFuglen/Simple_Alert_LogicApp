@@ -1,0 +1,103 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "denmarkeast"
+    },
+    "namePrefix": {
+      "value": "alertmachine"
+    },
+    "logicAppName": {
+      "value": "AlertMachine"
+    },
+    "logicAppRequestTriggerName": {
+      "value": "When_an_HTTP_request_is_received"
+    },
+    "logicAppWorkflowParameters": {
+      "value": {
+        "$connections": {
+          "value": {
+            "arm": {
+              "connectionId": "/subscriptions/fc17f768-1dca-47c0-8f35-4e1d7ba501e3/resourceGroups/DevMachine/providers/Microsoft.Web/connections/arm",
+              "connectionName": "arm",
+              "connectionProperties": {
+                "authentication": {
+                  "type": "ManagedServiceIdentity"
+                }
+              },
+              "id": "/subscriptions/fc17f768-1dca-47c0-8f35-4e1d7ba501e3/providers/Microsoft.Web/locations/denmarkeast/managedApis/arm"
+            },
+            "outlook": {
+              "connectionId": "/subscriptions/fc17f768-1dca-47c0-8f35-4e1d7ba501e3/resourceGroups/DevMachine/providers/Microsoft.Web/connections/outlook",
+              "connectionName": "outlook",
+              "connectionProperties": {},
+              "id": "/subscriptions/fc17f768-1dca-47c0-8f35-4e1d7ba501e3/providers/Microsoft.Web/locations/denmarkeast/managedApis/outlook"
+            }
+          }
+        }
+      }
+    },
+    "actionGroupName": {
+      "value": "TriggerLogicApp"
+    },
+    "actionGroupShortName": {
+      "value": "Tigger"
+    },
+    "actionGroupLocation": {
+      "value": "SwedenCentral"
+    },
+    "actionGroupLogicAppReceiverName": {
+      "value": "MyTrigger"
+    },
+    "deployMetricAlert": {
+      "value": false
+    },
+    "metricAlertName": {
+      "value": "simplealert-metric-alert"
+    },
+    "metricTargetResourceId": {
+      "value": ""
+    },
+    "metricNamespace": {
+      "value": ""
+    },
+    "metricName": {
+      "value": ""
+    },
+    "metricTimeAggregation": {
+      "value": "Average"
+    },
+    "metricOperator": {
+      "value": "GreaterThan"
+    },
+    "metricThreshold": {
+      "value": 80
+    },
+    "metricAlertSeverity": {
+      "value": 2
+    },
+    "metricEvaluationFrequency": {
+      "value": "PT1M"
+    },
+    "metricWindowSize": {
+      "value": "PT5M"
+    },
+    "useCommonAlertSchema": {
+      "value": true
+    },
+    "metricAutoMitigate": {
+      "value": true
+    },
+    "metricAlertEnabled": {
+      "value": true
+    },
+    "tags": {
+      "value": {
+        "environment": "dev",
+        "project": "simple-alert-logicapp",
+        "sourceResourceGroup": "DevMachine"
+      }
+    }
+  }
+}
