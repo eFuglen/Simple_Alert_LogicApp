@@ -4,8 +4,14 @@ param metricAlertName string
 @description('Azure region used for deployment metadata. For metric alerts this is typically global.')
 param location string = 'global'
 
-@description('Resource ID of the resource to monitor.')
-param targetResourceId string
+@description('Resource ID scope for the alert. Use subscription().id to target all resources of a given type in a subscription.')
+param targetScopeResourceId string
+
+@description('Target resource type when using broader scopes (for example Microsoft.Compute/virtualMachines).')
+param targetResourceType string = 'Microsoft.Compute/virtualMachines'
+
+@description('Target resource region when using broader scopes (for example denmarkeast).')
+param targetResourceRegion string
 
 @description('Metric namespace, for example Microsoft.Compute/virtualMachines.')
 param metricNamespace string
@@ -68,14 +74,16 @@ resource metricAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
     description: 'Metric alert routed to action group and Logic App.'
     severity: severity
     enabled: enabled
+    targetResourceType: targetResourceType
+    targetResourceRegion: targetResourceRegion
     scopes: [
-      targetResourceId
+      targetScopeResourceId
     ]
     evaluationFrequency: evaluationFrequency
     windowSize: windowSize
     autoMitigate: autoMitigate
     criteria: {
-      'odata.type': 'Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria'
+      'odata.type': 'Microsoft.Azure.Monitor.MultipleResourceMultipleMetricCriteria'
       allOf: [
         {
           name: 'alert-condition-1'

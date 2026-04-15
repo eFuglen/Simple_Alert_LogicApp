@@ -8,9 +8,7 @@ param logicAppName = 'Alert_Router'
 
 param logicAppRequestTriggerName = 'When_an_HTTP_request_is_received'
 
-// armConnectionName defaults to 'arm' in main.bicep; set here only if your
-// connection resource was created with a different name.
-// param armConnectionName = 'arm'
+param armConnectionName = 'arm'
 
 param actionGroupName = 'Trigger Alert Router Logic App'
 
@@ -20,15 +18,19 @@ param actionGroupLocation = 'SwedenCentral'
 
 param actionGroupLogicAppReceiverName = 'Trigger alert router'
 
-param deployMetricAlert = false
+param deployMetricAlert = true
 
-param metricAlertName = 'simplealert-metric-alert'
+param metricAlertName = 'Simple-Metric-Alert'
 
-param metricTargetResourceId = ''
+// Defaults in main.bicep already target current subscription and VM type.
+// Override here only when needed.
+// param metricTargetScopeResourceId = '/subscriptions/<subscription-id>'
+// param metricTargetResourceType = 'Microsoft.Compute/virtualMachines'
+// param metricTargetResourceRegion = 'denmarkeast'
 
-param metricNamespace = ''
+param metricNamespace = 'Microsoft.Compute/virtualMachines'
 
-param metricName = ''
+param metricName = 'Percentage CPU'
 
 param metricTimeAggregation = 'Average'
 

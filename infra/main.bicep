@@ -37,8 +37,14 @@ param metricAlertName string = '${namePrefix}metric-alert'
 @description('Deploy a metric alert rule. Set to true when you want IaC to create the alert rule.')
 param deployMetricAlert bool = true
 
-@description('Resource ID of monitored resource.')
-param metricTargetResourceId string = ''
+@description('Alert scope resource ID. Defaults to the current subscription to support alerts across all VMs in the subscription.')
+param metricTargetScopeResourceId string = subscription().id
+
+@description('Target resource type for the metric alert scope.')
+param metricTargetResourceType string = 'Microsoft.Compute/virtualMachines'
+
+@description('Target resource region for the metric alert scope.')
+param metricTargetResourceRegion string = location
 
 @description('Metric namespace, e.g. Microsoft.Compute/virtualMachines.')
 param metricNamespace string = ''
@@ -81,16 +87,17 @@ param subscriptionId string = subscription().subscriptionId
 
 var workflowDefinition = loadJsonContent('../logic-app-config/workflow.definition.json')
 
-// Construct the $connections workflow parameter dynamically from deployment context so
-// no subscription ID or resource group name needs to be hardcoded in parameter files.
-var armConnectionId = '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup().name}/providers/Microsoft.Web/connections/${armConnectionName}'
-var armManagedApiId = '/subscriptions/${subscriptionId}/providers/Microsoft.Web/locations/${location}/managedApis/${armConnectionName}'
+// Construct the $connections workflow parameter dynamically from deployment context.
+// armConnectionName is the resource name; 'arm' is the managed API type.
+var armConnectionResourceName = '${namePrefix}${armConnectionName}'
+var armConnectionId = '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup().name}/providers/Microsoft.Web/connections/${armConnectionResourceName}'
+var armManagedApiId = '/subscriptions/${subscriptionId}/providers/Microsoft.Web/locations/${location}/managedApis/arm'
 var workflowConnections = {
   '$connections': {
     value: {
       arm: {
         connectionId: armConnectionId
-        connectionName: armConnectionName
+        connectionName: armConnectionResourceName
         connectionProperties: {
           authentication: {
             type: 'ManagedServiceIdentity'
@@ -102,8 +109,22 @@ var workflowConnections = {
   }
 }
 
+module armConnection 'modules/apiConnection.bicep' = {
+  name: 'armApiConnectionDeployment'
+  params: {
+    connectionName: armConnectionResourceName
+    location: location
+    managedApiName: 'arm'
+    subscriptionId: subscriptionId
+    tags: tags
+  }
+}
+
 module logicApp 'modules/logicAppConsumption.bicep' = {
   name: 'logicAppDeployment'
+  dependsOn: [
+    armConnection
+  ]
   params: {
     logicAppName: '${namePrefix}${logicAppName}'
     location: location
@@ -131,8 +152,10 @@ module actionGroup 'modules/actionGroup.bicep' = {
 module metricAlert 'modules/metricAlert.bicep' = if (deployMetricAlert) {
   name: 'metricAlertDeployment'
   params: {
-    metricAlertName: metricAlertName
-    targetResourceId: metricTargetResourceId
+    metricAlertName: '${namePrefix}${metricAlertName}'
+    targetScopeResourceId: metricTargetScopeResourceId
+    targetResourceType: metricTargetResourceType
+    targetResourceRegion: metricTargetResourceRegion
     metricNamespace: metricNamespace
     metricName: metricName
     threshold: metricThreshold

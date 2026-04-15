@@ -27,19 +27,16 @@
       "value": "Trigger alert router"
     },
     "deployMetricAlert": {
-      "value": false
+      "value": true
     },
     "metricAlertName": {
       "value": "simplealert-metric-alert"
     },
-    "metricTargetResourceId": {
-      "value": ""
-    },
     "metricNamespace": {
-      "value": ""
+      "value": "Microsoft.Compute/virtualMachines"
     },
     "metricName": {
-      "value": ""
+      "value": "Percentage CPU"
     },
     "metricTimeAggregation": {
       "value": "Average"
