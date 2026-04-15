@@ -31,39 +31,22 @@
       "expression": {
         "and": [
           {
-            "equals": [
-              "@variables('monitorCondition')",
-              "Fired"
-            ]
+            "equals": ["@variables('monitorCondition')", "Fired"]
           }
         ]
       },
       "runAfter": {
-        "Get_resource_and_monitor_status": [
-          "Succeeded"
-        ]
+        "Get_resource_and_monitor_status": ["Succeeded"]
       },
       "type": "If"
     },
     "Check_if_resource_is_monitored": {
       "actions": {
-        "Resource_is_monitored_send_notification": {
+        "Terminate": {
+          "type": "Terminate",
           "inputs": {
-            "body": {
-              "Body": "<p class=\"editor-paragraph\">Trigger tigger</p>",
-              "Importance": "Normal",
-              "Subject": "The alert was triggered",
-              "To": "eske.fugl@vestereng.net"
-            },
-            "host": {
-              "connection": {
-                "name": "@parameters('$connections')['outlook']['connectionId']"
-              }
-            },
-            "method": "post",
-            "path": "/v2/Mail"
-          },
-          "type": "ApiConnection"
+            "runStatus": "Succeeded"
+          }
         }
       },
       "else": {
@@ -79,23 +62,15 @@
       "expression": {
         "and": [
           {
-            "contains": [
-              "@variables('tags')",
-              "Monitoring"
-            ]
+            "contains": ["@variables('tags')", "Monitoring"]
           },
           {
-            "equals": [
-              "@variables('tags')?['Monitoring']",
-              "Silver"
-            ]
+            "equals": ["@variables('tags')?['Monitoring']", "Silver"]
           }
         ]
       },
       "runAfter": {
-        "Tag_values": [
-          "Succeeded"
-        ]
+        "Tag_values": ["Succeeded"]
       },
       "type": "If"
     },
@@ -128,9 +103,7 @@
         ]
       },
       "runAfter": {
-        "Check_alert_condition": [
-          "Succeeded"
-        ]
+        "Check_alert_condition": ["Succeeded"]
       },
       "type": "InitializeVariable"
     }

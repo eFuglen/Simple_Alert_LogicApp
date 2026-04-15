@@ -10,7 +10,7 @@ on:
       parameterFile:
         description: Deployment parameter file path
         required: true
-        default: infra/parameters/main.dev.json
+        default: infra/parameters/main.dev.bicepparam
       deploymentName:
         description: Deployment name
         required: true

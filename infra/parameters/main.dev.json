@@ -6,49 +6,25 @@
       "value": "denmarkeast"
     },
     "namePrefix": {
-      "value": "alertmachine"
+      "value": "Dev-"
     },
     "logicAppName": {
-      "value": "AlertMachine"
+      "value": "Alert_Router"
     },
     "logicAppRequestTriggerName": {
       "value": "When_an_HTTP_request_is_received"
     },
-    "logicAppWorkflowParameters": {
-      "value": {
-        "$connections": {
-          "value": {
-            "arm": {
-              "connectionId": "/subscriptions/fc17f768-1dca-47c0-8f35-4e1d7ba501e3/resourceGroups/DevMachine/providers/Microsoft.Web/connections/arm",
-              "connectionName": "arm",
-              "connectionProperties": {
-                "authentication": {
-                  "type": "ManagedServiceIdentity"
-                }
-              },
-              "id": "/subscriptions/fc17f768-1dca-47c0-8f35-4e1d7ba501e3/providers/Microsoft.Web/locations/denmarkeast/managedApis/arm"
-            },
-            "outlook": {
-              "connectionId": "/subscriptions/fc17f768-1dca-47c0-8f35-4e1d7ba501e3/resourceGroups/DevMachine/providers/Microsoft.Web/connections/outlook",
-              "connectionName": "outlook",
-              "connectionProperties": {},
-              "id": "/subscriptions/fc17f768-1dca-47c0-8f35-4e1d7ba501e3/providers/Microsoft.Web/locations/denmarkeast/managedApis/outlook"
-            }
-          }
-        }
-      }
-    },
     "actionGroupName": {
-      "value": "TriggerLogicApp"
+      "value": "Trigger Alert Router Logic App"
     },
     "actionGroupShortName": {
-      "value": "Tigger"
+      "value": "RouteAlert"
     },
     "actionGroupLocation": {
       "value": "SwedenCentral"
     },
     "actionGroupLogicAppReceiverName": {
-      "value": "MyTrigger"
+      "value": "Trigger alert router"
     },
     "deployMetricAlert": {
       "value": false
@@ -92,11 +68,13 @@
     "metricAlertEnabled": {
       "value": true
     },
+    "grantLogicAppSubscriptionReader": {
+      "value": true
+    },
     "tags": {
       "value": {
-        "environment": "dev",
-        "project": "simple-alert-logicapp",
-        "sourceResourceGroup": "DevMachine"
+        "Workload": "AlertRouting",
+        "managedBy": "bicep"
       }
     }
   }

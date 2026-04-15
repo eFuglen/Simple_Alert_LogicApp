@@ -1,64 +1,77 @@
 # Simple Alert Logic App IaC (Bicep)
 
-Public Infrastructure as Code repository for deploying an Azure Monitor alerting flow:
+Modular Bicep Infrastructure as Code for deploying an Azure Monitor alerting flow using a Consumption Logic App.
 
-- Azure Logic App (Consumption)
-- Azure Monitor Action Group that invokes the Logic App
-- Azure Monitor Metric Alert that triggers the Action Group
+## What this deploys
 
-This repository is now baselined from your existing resources:
-
-- Tenant: 3krcloud (MngEnvMCAP634312.onmicrosoft.com)
-- Subscription: 3krCloud Admin (`fc17f768-1dca-47c0-8f35-4e1d7ba501e3`)
-- Resource group: `DevMachine`
-- Logic App: `AlertMachine`
-- Action Group: `TriggerLogicApp`
+- **Azure Logic App (Consumption)** – receives an HTTP trigger from the Action Group and runs alert-handling workflow logic
+- **Azure Monitor Action Group** – calls the Logic App trigger endpoint when an alert fires
+- **Azure Monitor Metric Alert** *(optional)* – watches a target resource/metric and fires the Action Group when thresholds are met
+- **Subscription-scope Reader role assignment** *(optional)* – grants the Logic App's managed identity read access so it can inspect resources
 
 ## Architecture
 
-1. A metric alert watches a target Azure resource and metric.
-2. When threshold conditions are met, the alert fires the action group.
-3. The action group calls the Logic App request trigger endpoint.
-4. The Logic App workflow runs your alert handling logic.
+```
+Metric Alert  →  Action Group  →  Logic App (HTTP trigger)  →  Workflow logic
+```
 
-Note: no existing alert rule was found in `DevMachine` during baseline capture, so metric alert deployment is optional and disabled by default in the parameter file (`deployMetricAlert: false`).
+All connection IDs and resource paths are computed at deploy time from the deployment context — no hardcoded subscription IDs or resource group names in the parameter files.
 
 ## Repository layout
 
-- infra/main.bicep: Entry point that orchestrates all modules.
-- infra/modules/logicAppConsumption.bicep: Logic App deployment and callback URL output.
-- infra/modules/actionGroup.bicep: Action Group with Logic App receiver.
-- infra/modules/metricAlert.bicep: Metric Alert bound to target scope and Action Group.
-- infra/parameters/main.dev.json: Single-environment parameter file.
-- logic-app-config/workflow.definition.json: Parameterized Logic App workflow definition.
-- .github/workflows/deploy-bicep.yml: GitHub Actions OIDC deployment workflow.
+```
+infra/
+  main.bicep                          Entry point — orchestrates all modules
+  modules/
+    logicAppConsumption.bicep         Logic App + SystemAssigned MSI + callback URL output
+    actionGroup.bicep                 Action Group with Logic App receiver
+    metricAlert.bicep                 Optional metric alert rule
+    subscriptionReaderRoleAssignment.bicep  Optional subscription Reader for Logic App MSI
+  parameters/
+    main.dev.bicepparam               Dev environment parameter values
+logic-app-config/
+  workflow.definition.json            Logic App workflow definition (loaded via loadJsonContent)
+.github/
+  workflows/
+    deploy-bicep.yml                  GitHub Actions OIDC deployment workflow
+```
 
 ## Prerequisites
 
-- Azure CLI installed and logged in
-- Bicep CLI available through Azure CLI (`az bicep`)
-- Existing resource group for deployment
-- Existing target resource to monitor (for metric alert scope)
-- GitHub repository variables for OIDC deployment:
-  - AZURE_CLIENT_ID
-  - AZURE_TENANT_ID
-  - AZURE_SUBSCRIPTION_ID
-  - AZURE_RESOURCE_GROUP
+- Azure CLI with Bicep: `az bicep install`
+- A resource group to deploy into
+- An existing `arm` API connection resource in the same resource group (used by the Logic App to call Azure Resource Manager)
+- For metric alerts: a target Azure resource to monitor
 
 ## Configure
 
-1. Review infra/parameters/main.dev.json (already pre-populated with your current Logic App and Action Group baseline).
-2. Confirm API connection resources exist (`arm` and `outlook`) in `DevMachine`.
-3. If you want IaC to also create a metric alert rule, set `deployMetricAlert` to `true` and fill `metricTargetResourceId`, `metricNamespace`, and `metricName`.
+Copy and edit the parameter file for your environment:
+
+```bash
+cp infra/parameters/main.dev.bicepparam infra/parameters/main.<env>.bicepparam
+```
+
+Key parameters:
+
+| Parameter | Default | Description |
+|---|---|---|
+| `namePrefix` | `'Dev-'` | Prefix applied to all resource names |
+| `location` | `'denmarkeast'` | Azure region |
+| `logicAppName` | `'Alert_Router'` | Logic App resource name suffix |
+| `armConnectionName` | `'arm'` | Name of the existing ARM API connection resource |
+| `deployMetricAlert` | `false` | Set to `true` to also deploy a metric alert rule |
+| `grantLogicAppSubscriptionReader` | `true` | Grant the Logic App MSI subscription Reader |
+| `subscriptionId` | *(deployment subscription)* | Override only when assigning RBAC to a different subscription |
 
 ## Validate locally
 
 ```bash
 az bicep build --file infra/main.bicep
+
 az deployment group validate \
-  --resource-group <resource-group-name> \
+  --resource-group <your-resource-group> \
   --template-file infra/main.bicep \
-  --parameters @infra/parameters/main.dev.json
+  --parameters infra/parameters/main.dev.bicepparam
 ```
 
 ## Deploy locally
@@ -66,37 +79,24 @@ az deployment group validate \
 ```bash
 az deployment group create \
   --name simple-alert-logicapp \
-  --resource-group <resource-group-name> \
+  --resource-group <your-resource-group> \
   --template-file infra/main.bicep \
-  --parameters @infra/parameters/main.dev.json
+  --parameters infra/parameters/main.dev.bicepparam
 ```
 
 ## Deploy with GitHub Actions (OIDC)
 
-1. Create a Microsoft Entra app registration for GitHub OIDC.
-2. Add a federated credential for your repository and branch/environment.
-3. Grant least-privilege role on the deployment resource group.
-4. Add required repository variables listed above.
-5. Run the workflow: Actions -> Deploy Bicep -> Run workflow.
+1. Create a Microsoft Entra app registration and configure a federated credential for your repository and branch.
+2. Grant the app registration at minimum **Contributor** on the deployment resource group (and **Owner** if using the Reader role assignment module).
+3. Add the following repository **variables** (not secrets):
+   - `AZURE_CLIENT_ID`
+   - `AZURE_TENANT_ID`
+   - `AZURE_SUBSCRIPTION_ID`
+   - `AZURE_RESOURCE_GROUP`
+4. Run the workflow: **Actions → Deploy Bicep → Run workflow**.
 
-## Public repository safety
+## Security notes
 
-- Do not commit secrets, access keys, or callback URLs with tokens.
-- Keep environment-specific IDs in parameter files that you control.
-- Review pull requests for accidental sensitive data.
-
-## Create and publish public repository
-
-```bash
-git init
-git add .
-git commit -m "Initial Bicep IaC for Logic App alert flow"
-```
-
-If GitHub CLI is installed:
-
-```bash
-gh repo create Simple_Alert_LogicApp --public --source . --remote origin --push
-```
-
-Otherwise, create an empty public repository in GitHub web UI, then add remote and push.
+- The Logic App trigger callback URL is marked `@secure()` and is never written to state or logs.
+- No subscription IDs, tenant IDs, or resource IDs are hardcoded in the templates or parameter files — all paths are computed at deploy time.
+- Do not commit access keys, SAS tokens, or any credential material.

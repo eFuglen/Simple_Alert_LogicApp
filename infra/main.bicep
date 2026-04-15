@@ -4,40 +4,38 @@ targetScope = 'resourceGroup'
 param location string = resourceGroup().location
 
 @description('Prefix for resource naming.')
-param namePrefix string = 'alertmachine'
+param namePrefix string = ''
 
 @description('Tags applied to all resources where supported.')
-param tags object = {
-  workload: 'monitoring'
-  managedBy: 'bicep'
-}
+param tags object = {}
 
 @description('Logic App workflow name.')
-param logicAppName string = 'AlertMachine'
+param logicAppName string
 
 @description('Request trigger name from workflow definition used to derive callback URL.')
 param logicAppRequestTriggerName string = 'When_an_HTTP_request_is_received'
 
-@description('Workflow parameters map, typically containing the $connections configuration.')
-param logicAppWorkflowParameters object = {}
+@description('Name of the ARM managed API connection resource that the Logic App uses to read Azure resources.')
+param armConnectionName string = 'arm'
 
 @description('Action Group resource name.')
-param actionGroupName string = 'TriggerLogicApp'
+param actionGroupName string
 
 @description('Action Group short name (max 12 chars).')
-param actionGroupShortName string = 'Tigger'
+@maxLength(12)
+param actionGroupShortName string
 
 @description('Action Group deployment location.')
 param actionGroupLocation string = 'SwedenCentral'
 
 @description('Logic App receiver display name in the Action Group.')
-param actionGroupLogicAppReceiverName string = 'MyTrigger'
+param actionGroupLogicAppReceiverName string
 
 @description('Metric Alert resource name.')
-param metricAlertName string = '${namePrefix}-metric-alert'
+param metricAlertName string = '${namePrefix}metric-alert'
 
 @description('Deploy a metric alert rule. Set to true when you want IaC to create the alert rule.')
-param deployMetricAlert bool = false
+param deployMetricAlert bool = true
 
 @description('Resource ID of monitored resource.')
 param metricTargetResourceId string = ''
@@ -75,15 +73,42 @@ param metricAutoMitigate bool = true
 @description('Enable or disable metric alert rule.')
 param metricAlertEnabled bool = true
 
+@description('Grant Logic App system-managed identity Reader access at subscription scope.')
+param grantLogicAppSubscriptionReader bool = true
+
+@description('Subscription ID used for constructing connection resource IDs and for the Reader role assignment scope. Defaults to the current deployment subscription.')
+param subscriptionId string = subscription().subscriptionId
+
 var workflowDefinition = loadJsonContent('../logic-app-config/workflow.definition.json')
+
+// Construct the $connections workflow parameter dynamically from deployment context so
+// no subscription ID or resource group name needs to be hardcoded in parameter files.
+var armConnectionId = '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup().name}/providers/Microsoft.Web/connections/${armConnectionName}'
+var armManagedApiId = '/subscriptions/${subscriptionId}/providers/Microsoft.Web/locations/${location}/managedApis/${armConnectionName}'
+var workflowConnections = {
+  '$connections': {
+    value: {
+      arm: {
+        connectionId: armConnectionId
+        connectionName: armConnectionName
+        connectionProperties: {
+          authentication: {
+            type: 'ManagedServiceIdentity'
+          }
+        }
+        id: armManagedApiId
+      }
+    }
+  }
+}
 
 module logicApp 'modules/logicAppConsumption.bicep' = {
   name: 'logicAppDeployment'
   params: {
-    logicAppName: logicAppName
+    logicAppName: '${namePrefix}${logicAppName}'
     location: location
     workflowDefinition: workflowDefinition
-    workflowParameters: logicAppWorkflowParameters
+    workflowParameters: workflowConnections
     requestTriggerName: logicAppRequestTriggerName
     tags: tags
   }
@@ -92,7 +117,7 @@ module logicApp 'modules/logicAppConsumption.bicep' = {
 module actionGroup 'modules/actionGroup.bicep' = {
   name: 'actionGroupDeployment'
   params: {
-    actionGroupName: actionGroupName
+    actionGroupName: '${namePrefix}${actionGroupName}'
     groupShortName: actionGroupShortName
     location: actionGroupLocation
     logicAppReceiverName: actionGroupLogicAppReceiverName
@@ -123,6 +148,17 @@ module metricAlert 'modules/metricAlert.bicep' = if (deployMetricAlert) {
   }
 }
 
+module logicAppSubscriptionReader 'modules/subscriptionReaderRoleAssignment.bicep' = if (grantLogicAppSubscriptionReader) {
+  name: 'logicAppSubscriptionReaderRoleAssignment'
+  scope: subscription(subscriptionId)
+  params: {
+    principalId: logicApp.outputs.logicAppPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 output logicAppResourceId string = logicApp.outputs.logicAppId
 output actionGroupResourceId string = actionGroup.outputs.actionGroupId
 output metricAlertResourceId string = deployMetricAlert ? metricAlert!.outputs.metricAlertId : ''
+output logicAppPrincipalId string = logicApp.outputs.logicAppPrincipalId
+output logicAppSubscriptionReaderRoleAssignmentId string = grantLogicAppSubscriptionReader ? logicAppSubscriptionReader!.outputs.roleAssignmentId : ''

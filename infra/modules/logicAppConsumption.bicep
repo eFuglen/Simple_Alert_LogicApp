@@ -41,5 +41,6 @@ var triggerResourceId = resourceId('Microsoft.Logic/workflows/triggers', logicAp
 
 output logicAppId string = logicApp.id
 output logicAppNameOut string = logicApp.name
+output logicAppPrincipalId string = logicApp.identity.principalId
 @secure()
 output requestTriggerCallbackUrl string = listCallbackUrl(triggerResourceId, '2019-05-01').value
